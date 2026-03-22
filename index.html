@@ -470,7 +470,7 @@
 </div>
 
 <script>
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSyGtPRxPvvPf_a2ZAMubDjM4_fHRoIrUjydVr_pgr4RPYtmZ_c3PHWPKyn2w2DgoRiT9UAPfLTf-Ln/pub?gid=2034778958&single=true&output=csv';
+const CSV_URL = 'https://raw.githubusercontent.com/yvesyiu7/SummerCalendar/refs/heads/main/Calendar.csv';
 
 const TYPE_COLORS = {
   'DIY工作坊': '#10b981',
@@ -501,63 +501,64 @@ function getTypeColor(type) {
   return TYPE_COLORS[type] || TYPE_COLORS['待定'];
 }
 
+function cleanStr(s) {
+  return (s || '').replace(/\r/g, '').replace(/\uFEFF/g, '').trim();
+}
+
+function parseCSVLine(raw) {
+  const cols = [];
+  let cur = '', inQ = false;
+  for (let c = 0; c < raw.length; c++) {
+    const ch = raw[c];
+    if (ch === '"') {
+      if (inQ && raw[c+1] === '"') { cur += '"'; c++; }
+      else { inQ = !inQ; }
+    } else if (ch === ',' && !inQ) {
+      cols.push(cleanStr(cur)); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  cols.push(cleanStr(cur));
+  return cols;
+}
+
 function parseCSV(text) {
-  const lines = text.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim().replace(/\r/g, ''));
+  // Remove BOM, normalize ALL line endings for mobile compatibility
+  const cleaned = text
+    .replace(/\uFEFF/g, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
+  const lines = cleaned.trim().split('\n').filter(l => l.trim() !== '');
+
+  console.log('CSV lines:', lines.length, '| First:', lines[0] ? lines[0].substring(0,40) : 'empty');
+
   const events = [];
   for (let i = 1; i < lines.length; i++) {
-    const raw = lines[i];
-    // Handle quoted fields
-    const cols = [];
-    let cur = ''; let inQ = false;
-    for (let c = 0; c < raw.length; c++) {
-      if (raw[c] === '"') { inQ = !inQ; }
-      else if (raw[c] === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
-      else { cur += raw[c]; }
-    }
-    cols.push(cur.trim());
-
-    const dateStr = (cols[0] || '').replace(/\r/g,'').trim();
-    if (!dateStr || dateStr === '?' || dateStr === '') continue;
+    const cols = parseCSVLine(lines[i]);
+    const dateStr = cleanStr(cols[0]);
+    if (!dateStr || dateStr === '?' || dateStr === '日期') continue;
 
     const parts = dateStr.split('/');
     if (parts.length < 2) continue;
     const day = parseInt(parts[0]);
-    const month = parseInt(parts[1]) - 1; // 0-indexed
-    if (isNaN(day) || isNaN(month)) continue;
+    const month = parseInt(parts[1]) - 1;
+    if (isNaN(day) || isNaN(month) || day < 1 || day > 31 || month < 0 || month > 11) continue;
 
-    const type = (cols[3] || '').replace(/\r/g,'').trim() || '待定';
+    const type = cleanStr(cols[3]) || '待定';
     events.push({
       date: new Date(2026, month, day),
-      location: (cols[1] || '').replace(/\r/g,'').trim(),
-      time: (cols[2] || '').replace(/\r/g,'').trim(),
-      type: type,
-      name: (cols[4] || '').replace(/\r/g,'').trim() || '（待定）',
-      description: (cols[5] || '').replace(/\r/g,'').trim(),
-      fee: (cols[6] || '').replace(/\r/g,'').trim(),
-      capacity: (cols[7] || '').replace(/\r/g,'').trim(),
+      location: cleanStr(cols[1]),
+      time: cleanStr(cols[2]),
+      type,
+      name: cleanStr(cols[4]) || '（待定）',
+      description: cleanStr(cols[5]),
+      fee: cleanStr(cols[6]),
+      capacity: cleanStr(cols[7]),
     });
   }
+  console.log('Parsed events:', events.length);
   return events;
-}
-
-async function fetchWithProxy(url) {
-  // Try multiple CORS proxies in order
-  const proxies = [
-    `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    `https://cors-anywhere.herokuapp.com/${url}`,
-  ];
-  for (const proxy of proxies) {
-    try {
-      const res = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
-      if (res.ok) {
-        const text = await res.text();
-        if (text && text.length > 10) return text;
-      }
-    } catch (e) { /* try next */ }
-  }
-  throw new Error('All proxies failed');
 }
 
 async function loadData() {
@@ -566,13 +567,17 @@ async function loadData() {
   overlay.style.display = 'flex';
 
   const btn = document.querySelector('.refresh-btn');
-  btn.classList.add('spinning');
+  if (btn) btn.classList.add('spinning');
 
   try {
-    const text = await fetchWithProxy(CSV_URL);
-    allEvents = parseCSV(text);
+    // GitHub raw supports CORS — direct fetch, no proxy needed
+    const res = await fetch(CSV_URL + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    if (!text || text.length < 20) throw new Error('Empty response');
 
-    if (allEvents.length === 0) throw new Error('No data parsed');
+    allEvents = parseCSV(text);
+    if (allEvents.length === 0) throw new Error('No events parsed');
 
     const months = allEvents.map(e => e.date.getMonth());
     minMonth = Math.min(...months);
@@ -584,15 +589,16 @@ async function loadData() {
     renderCalendar();
     overlay.style.display = 'none';
   } catch (e) {
+    console.error('Load failed:', e);
     overlay.innerHTML = `
       <div class="error-box">
         <h3>⚠️ 載入失敗</h3>
-        <p style="margin-bottom:8px">無法讀取 Google Sheets 數據。</p>
-        <p style="font-size:0.75rem;color:#aaa">請確認試算表已設定為「知道連結的人均可檢視」，並已透過「發佈到網路」發佈。</p>
-        <button class="error-btn" onclick="loadData()">重試</button>
+        <p style="margin-bottom:8px">無法讀取活動數據。</p>
+        <p style="font-size:0.75rem;color:#999;margin-bottom:4px">錯誤：${e.message}</p>
+        <button class="error-btn" onclick="loadData()">🔄 重試</button>
       </div>`;
   }
-  btn.classList.remove('spinning');
+  if (btn) btn.classList.remove('spinning');
 }
 
 function buildFilters() {
