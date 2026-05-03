@@ -3,290 +3,305 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2026 夏日．清涼．爽 - 活動議程</title>
+    <title>活動日程表</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'surface': '#fefdf4',
+                        'surface-container-low': '#f7f6ed',
+                        'surface-container-high': '#ecebd9',
+                        'on-surface': '#373928',
+                        'primary': '#f0c419',
+                        'secondary': '#1a719c',
+                        'tertiary': '#59ee50',
+                        'tertiary-container': '#dcfadc',
+                    },
+                    fontFamily: {
+                        'sans': ['Noto Sans TC', 'sans-serif'],
+                        'serif': ['Playfair Display', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        body {
-            font-family: 'Noto Sans TC', sans-serif;
-            background-color: #f0f9ff;
-            scroll-behavior: smooth;
+        body { background-color: #fefdf4; color: #373928; overflow-x: hidden; }
+        .filter-btn.active { background-color: #1a719c; color: white; box-shadow: 0 4px 15px rgba(26, 113, 156, 0.3); }
+        .tag-button { transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1); }
+        .tag-button:hover { transform: scale(1.05) translateY(-3px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .modal-glow { box-shadow: 0 0 40px rgba(240, 196, 25, 0.2); }
+        
+        /* 1. 封面高度限制與模糊背景效果 */
+        .header-banner { 
+            height: 25vh; /* 限制高度約為頁面的 20-25% */
+            position: relative;
+            overflow: hidden;
+            width: 100%;
         }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+        .banner-bg-blur {
+            position: absolute;
+            inset: -20px;
+            background-image: url('images/titlePoster.jpg');
+            background-size: cover;
+            background-position: center;
+            filter: blur(15px) brightness(0.9);
+            z-index: 1;
         }
-        .tag-button {
-            transition: all 0.2s ease;
-        }
-        .tag-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.5);
-            transition: opacity 0.3s ease;
-        }
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+        .banner-img-main {
+            position: relative;
+            z-index: 2;
+            height: 100%;
+            width: 100%;
+            object-fit: contain; /* 確保圖片不被裁切，左右留空顯示背景 */
         }
     </style>
 </head>
-<body class="min-h-screen pb-12">
 
-    <!-- Header Section -->
-    <header class="bg-white shadow-sm sticky top-0 z-30">
-        <div class="max-w-4xl mx-auto px-4 py-6">
-            <h1 class="text-2xl md:text-3xl font-bold text-sky-700 text-center mb-2">2026 夏日．清涼．爽</h1>
-            <p class="text-gray-500 text-center text-sm mb-6">下午 15:00 - 18:00 | 活動議程清單</p>
-            
-            <!-- Category Filter -->
-            <div id="filter-container" class="flex flex-wrap justify-center gap-2 overflow-x-auto pb-2 no-scrollbar">
-                <button id="filter-all" onclick="filterActivities('All', this)" class="filter-btn px-4 py-1.5 rounded-full text-sm font-medium bg-sky-600 text-white shadow-md transition-all">全部</button>
-            </div>
-        </div>
+<body class="min-h-screen pb-20">
+
+    <!-- 1. 修改後的 Header：高度限制與模糊填充 -->
+    <header class="header-banner shadow-lg">
+        <div class="banner-bg-blur"></div>
+        <img src="images/titlePoster.jpg" alt="Title Poster" class="banner-img-main">
     </header>
 
-    <!-- Main Content -->
-    <main class="max-w-4xl mx-auto px-4 mt-8">
-        <div id="agenda-container" class="space-y-10">
-            <!-- Loading State -->
-            <div id="loading-spinner" class="flex flex-col items-center justify-center py-20">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600 mb-4"></div>
-                <p class="text-gray-500 animate-pulse">正在讀取 Calendar.csv ...</p>
+    <nav class="sticky top-0 bg-surface/80 backdrop-blur-md z-40 py-6 border-b border-surface-container-high mb-16">
+        <div class="max-w-6xl mx-auto px-6">
+            <div id="filter-container" class="flex items-center gap-6 overflow-x-auto no-scrollbar">
+                <button onclick="UI.filter('All', this)" class="filter-btn active whitespace-nowrap text-sm font-bold uppercase tracking-widest px-6 py-2 rounded-full transition-all">
+                    全部
+                </button>
             </div>
         </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-6">
+        <div id="agenda-container" class="space-y-24"></div>
     </main>
 
-    <!-- Modal (Popup Details) -->
-    <div id="detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
-        <div class="modal-overlay absolute inset-0" onclick="closeModal()"></div>
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden relative z-10 transform scale-95 transition-transform duration-300">
-            <div id="modal-header-bg" class="h-32 bg-sky-500 flex items-end px-6 pb-4">
-                <span id="modal-type-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white text-sky-700 shadow-sm">類型</span>
+    <div id="detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-500">
+        <div class="absolute inset-0 bg-on-surface/20 backdrop-blur-sm" onclick="UI.closeModal()"></div>
+        <div class="bg-surface rounded-sm modal-glow w-full max-w-xl overflow-hidden relative z-10 transform translate-y-8 transition-all duration-500">
+            
+            <div id="modal-poster-container" class="w-full bg-gray-100 overflow-hidden hidden border-b border-surface-container-high">
+                <img id="modal-poster" src="" alt="Poster" class="w-full h-full object-cover aspect-[2/1]">
             </div>
-            <div class="p-6">
-                <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
-                <h2 id="modal-title" class="text-2xl font-bold text-gray-800 mb-2">活動名稱</h2>
-                
-                <div class="grid grid-cols-2 gap-4 mb-6 text-sm text-gray-600">
-                    <div class="flex items-center">
-                        <span class="mr-2">📅</span>
-                        <span id="modal-date">日期</span>
-                    </div>
-                    <div class="flex items-center">
-                        <span class="mr-2">🕒</span>
-                        <span id="modal-time">時間</span>
-                    </div>
-                    <div class="flex items-center">
-                        <span class="mr-2">📍</span>
-                        <span id="modal-location">地點</span>
-                    </div>
-                    <div class="flex items-center">
-                        <span class="mr-2">👥</span>
-                        <span id="modal-capacity">人數</span>
-                    </div>
-                </div>
 
-                <div class="border-t pt-4">
-                    <h3 class="text-sm font-semibold text-gray-400 uppercase mb-2">活動簡述</h3>
-                    <p id="modal-desc" class="text-gray-700 leading-relaxed mb-4 whitespace-pre-line">內容略述...</p>
+            <div class="grid grid-cols-1 md:grid-cols-5 h-full">
+                <div id="modal-side-accent" class="hidden md:block col-span-1"></div>
+                <div class="col-span-4 p-8 md:p-10 relative">
+                    <button onclick="UI.closeModal()" class="absolute top-6 right-8 text-on-surface/40 hover:text-on-surface">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                    <div id="modal-type-tag" class="inline-block text-[10px] font-bold uppercase tracking-[0.2em] text-secondary mb-4"></div>
+                    <h2 id="modal-title" class="text-3xl font-serif mb-6 text-on-surface"></h2>
+                    <div class="grid grid-cols-2 gap-6 mb-8">
+                        <div class="info-group">
+                            <span class="block text-[10px] uppercase text-gray-400 font-bold mb-1">Date & Time</span>
+                            <p class="text-sm font-medium"><span id="modal-date"></span> / <span id="modal-time"></span></p>
+                        </div>
+                        <div class="info-group">
+                            <span class="block text-[10px] uppercase text-gray-400 font-bold mb-1">Location</span>
+                            <p id="modal-location" class="text-sm font-medium"></p>
+                        </div>
+                        <div class="info-group">
+                            <span class="block text-[10px] uppercase text-gray-400 font-bold mb-1">Capacity</span>
+                            <p id="modal-capacity" class="text-sm font-medium"></p>
+                        </div>
+                        <div class="info-group">
+                            <span class="block text-[10px] uppercase text-gray-400 font-bold mb-1">Fee</span>
+                            <p id="modal-fee" class="text-sm font-bold text-secondary"></p>
+                        </div>
+                    </div>
                     
-                    <div class="bg-orange-50 p-3 rounded-lg flex justify-between items-center">
-                        <span class="text-sm font-medium text-orange-700">收費情況</span>
-                        <span id="modal-fee" class="font-bold text-orange-800">免費</span>
+                    <p id="modal-desc" class="text-on-surface/80 leading-relaxed font-light text-base italic font-serif border-l-2 border-primary/30 pl-4 mb-10"></p>
+
+                    <!-- 2. 修正按鈕文字 -->
+                    <div class="mt-4">
+                        <a href="https://forms.gle/oxFMe3gZCAMF2dck9" target="_blank" class="inline-block w-full text-center bg-secondary text-white py-4 rounded-full font-bold tracking-widest hover:bg-opacity-90 transition-all shadow-lg">
+                            立即報名
+                        </a>
                     </div>
                 </div>
-            </div>
-            <div class="px-6 py-4 bg-gray-50 border-t flex justify-end">
-                <button onclick="closeModal()" class="bg-sky-600 text-white px-6 py-2 rounded-xl font-medium hover:bg-sky-700 transition-colors shadow-lg">關閉</button>
             </div>
         </div>
     </div>
 
     <script>
-        let rawData = [];
-        let currentFilter = "All";
-
-        const categoryColors = {
-            "大型聚會": "bg-purple-100 text-purple-700 border-purple-200",
-            "運動": "bg-green-100 text-green-700 border-green-200",
-            "美食": "bg-yellow-100 text-yellow-700 border-yellow-200",
-            "DIY工作坊": "bg-pink-100 text-pink-700 border-pink-200",
-            "腦力挑戰": "bg-blue-100 text-blue-700 border-blue-200",
-            "保健": "bg-teal-100 text-teal-700 border-teal-200",
-            "觸碰心靈": "bg-indigo-100 text-indigo-700 border-indigo-200",
-            "default": "bg-gray-100 text-gray-700 border-gray-200"
-        };
-
-        const modalColors = {
-            "大型聚會": "bg-purple-500", "運動": "bg-green-500", "美食": "bg-yellow-500", 
-            "DIY工作坊": "bg-pink-500", "腦力挑戰": "bg-blue-500", "保健": "bg-teal-500", 
-            "觸碰心靈": "bg-indigo-500", "default": "bg-sky-500"
-        };
-
-        // 初始化：讀取 CSV
-        window.onload = async () => {
-            try {
-                const response = await fetch('Calendar.csv');
-                if (!response.ok) throw new Error('無法讀取 Calendar.csv');
-                const csvText = await response.text();
-                rawData = parseCSV(csvText);
-                initPage();
-            } catch (error) {
-                console.error("CSV Loading Error:", error);
-                document.getElementById('agenda-container').innerHTML = `
-                    <div class="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl text-center">
-                        <p class='font-bold mb-2'>讀取數據失敗</p>
-                        <p class='text-sm'>請確保 Calendar.csv 與網頁放在同一目錄下，且透過 HTTP Server (如 GitHub Pages) 執行。</p>
-                    </div>
-                `;
+        const THEME_CONFIG = {
+            categories: {
+                "大型聚會": { btn: "bg-primary text-on-surface", accent: "bg-primary" },
+                "運動":     { btn: "bg-tertiary-container text-on-surface", accent: "bg-tertiary" },
+                "美食":     { btn: "bg-orange-100 text-on-surface", accent: "bg-orange-400" },
+                "DIY工作坊": { btn: "bg-surface-container-high text-on-surface", accent: "bg-gray-400" },
+                "腦力挑戰": { btn: "bg-secondary text-white", accent: "bg-secondary" },
+                "保健":     { btn: "bg-green-100 text-on-surface", accent: "bg-green-600" },
+                "觸碰心靈": { btn: "bg-blue-50 text-secondary", accent: "bg-blue-400" },
+                "default":  { btn: "bg-surface-container-low text-on-surface", accent: "bg-secondary" }
             }
         };
 
-        // 簡易 CSV 解析器
-        function parseCSV(text) {
-            const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
-            const headers = lines[0].split(',').map(h => h.trim());
-            return lines.slice(1).map(line => {
-                // 處理可能包含逗號的引號文字 (e.g. "Text, with comma")
-                const values = [];
-                let current = "";
-                let inQuotes = false;
-                for (let i = 0; i < line.length; i++) {
-                    const char = line[i];
-                    if (char === '"') inQuotes = !inQuotes;
-                    else if (char === ',' && !inQuotes) {
-                        values.push(current.trim());
-                        current = "";
-                    } else {
-                        current += char;
-                    }
+        let state = {
+            rawData: [],
+            currentFilter: "All"
+        };
+
+        const DataService = {
+            async fetchCSV() {
+                try {
+                    const response = await fetch('Calendar.csv');
+                    if (!response.ok) throw new Error('File not found');
+                    const text = await response.text();
+                    return this.parse(text);
+                } catch (e) {
+                    console.error("CSV Loading Error", e);
+                    return [];
                 }
-                values.push(current.trim());
+            },
 
-                // 映射到對象欄位
-                return {
-                    date: values[0] || "",
-                    location: values[1] || "",
-                    time: values[2] || "",
-                    type: values[3] || "",
-                    name: values[4] || "",
-                    desc: values[5] || "",
-                    fee: values[6] || "免費",
-                    capacity: values[7] || "不限"
-                };
-            }).filter(item => item.name !== ""); // 過濾空行
-        }
-
-        function initPage() {
-            setupFilters();
-            renderAgenda();
-        }
-
-        function setupFilters() {
-            const types = [...new Set(rawData.map(item => item.type).filter(Boolean))];
-            const container = document.getElementById('filter-container');
-            
-            types.forEach(type => {
-                const btn = document.createElement('button');
-                btn.className = "filter-btn px-4 py-1.5 rounded-full text-sm font-medium bg-white text-gray-600 border border-gray-200 hover:border-sky-300 transition-all whitespace-nowrap";
-                btn.innerText = type;
-                btn.onclick = (e) => filterActivities(type, e.target);
-                container.appendChild(btn);
-            });
-        }
-
-        function filterActivities(type, targetBtn) {
-            currentFilter = type;
-            // UI切換
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('bg-sky-600', 'text-white', 'shadow-md');
-                btn.classList.add('bg-white', 'text-gray-600', 'border-gray-200');
-            });
-            targetBtn.classList.remove('bg-white', 'text-gray-600', 'border-gray-200');
-            targetBtn.classList.add('bg-sky-600', 'text-white', 'shadow-md');
-            
-            renderAgenda();
-        }
-
-        function renderAgenda() {
-            const container = document.getElementById('agenda-container');
-            container.innerHTML = '';
-
-            const filteredData = currentFilter === 'All' 
-                ? rawData 
-                : rawData.filter(item => item.type === currentFilter);
-
-            if (filteredData.length === 0) {
-                container.innerHTML = `<div class="text-center py-12 text-gray-400">目前沒有相關活動</div>`;
-                return;
-            }
-
-            const grouped = filteredData.reduce((acc, curr) => {
-                if (!acc[curr.date]) acc[curr.date] = [];
-                acc[curr.date].push(curr);
-                return acc;
-            }, {});
-
-            Object.keys(grouped).forEach(date => {
-                const dateSection = document.createElement('section');
-                dateSection.className = "animate-in fade-in slide-in-from-bottom-4 duration-500";
+            parse(text) {
+                const lines = text.split(/\r?\n/).filter(l => l.trim());
+                if (lines.length < 2) return [];
                 
-                dateSection.innerHTML = `
-                    <div class="flex items-center mb-4">
-                        <div class="bg-sky-600 text-white px-4 py-1 rounded-lg font-bold shadow-sm">${date}</div>
-                        <div class="ml-4 flex-grow h-px bg-sky-100"></div>
-                    </div>
-                    <div class="flex flex-wrap gap-3">
-                        ${grouped[date].map((item) => {
-                            const colorClass = categoryColors[item.type] || categoryColors.default;
-                            // 轉義引號以防 JSON 字串出錯
-                            const itemStr = JSON.stringify(item).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
-                            return `
-                                <button onclick='showDetails(${itemStr})' 
-                                        class="tag-button px-4 py-2 rounded-xl border text-sm font-medium ${colorClass} glass-card">
-                                    ${item.name}
-                                </button>
-                            `;
-                        }).join('')}
-                    </div>
+                return lines.slice(1).map(line => {
+                    const values = [];
+                    let cur = "", inQuotes = false;
+                    for (let char of line) {
+                        if (char === '"') inQuotes = !inQuotes;
+                        else if (char === ',' && !inQuotes) { values.push(cur.trim()); cur = ""; }
+                        else cur += char;
+                    }
+                    values.push(cur.trim());
+                    return {
+                        date: values[0], location: values[1], time: values[2],
+                        type: values[3], name: values[4], desc: values[5],
+                        fee: values[6] || "免費", capacity: values[7] || "不限",
+                        poster: values[8] 
+                    };
+                }).filter(item => item.name);
+            }
+        };
+
+        const UI = {
+            init() {
+                this.renderFilters();
+                this.renderAgenda();
+            },
+
+            renderFilters() {
+                const types = [...new Set(state.rawData.map(i => i.type).filter(Boolean))];
+                const container = document.getElementById('filter-container');
+                types.forEach(type => {
+                    const btn = document.createElement('button');
+                    btn.className = "filter-btn whitespace-nowrap text-sm font-bold uppercase tracking-widest px-6 py-2 rounded-full transition-all text-gray-400 hover:text-on-surface";
+                    btn.textContent = type;
+                    btn.onclick = (e) => this.filter(type, e.target);
+                    container.appendChild(btn);
+                });
+            },
+
+            filter(type, el) {
+                state.currentFilter = type;
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active', 'text-on-surface'));
+                el.classList.add('active');
+                this.renderAgenda();
+            },
+
+            renderAgenda() {
+                const container = document.getElementById('agenda-container');
+                const filtered = state.currentFilter === 'All' ? 
+                    state.rawData : state.rawData.filter(i => i.type === state.currentFilter);
+
+                if (filtered.length === 0) {
+                    container.innerHTML = `<p class="py-20 text-center italic font-serif">尚未有活動。</p>`;
+                    return;
+                }
+
+                const grouped = filtered.reduce((acc, curr) => {
+                    (acc[curr.date] = acc[curr.date] || []).push(curr);
+                    return acc;
+                }, {});
+
+                container.innerHTML = Object.entries(grouped).map(([date, items], idx) => `
+                    <section class="flex flex-col md:flex-row gap-8 ${idx % 2 === 0 ? 'md:pr-24' : 'md:pl-24'}">
+                        <div class="md:w-1/4">
+                            <h3 class="text-7xl font-serif text-surface-container-high select-none">${date}</h3>
+                            <span class="block h-1 w-12 bg-primary mt-2"></span>
+                        </div>
+                        <div class="md:w-3/4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            ${items.map(item => this.createCard(item)).join('')}
+                        </div>
+                    </section>
+                `).join('');
+            },
+
+            createCard(item) {
+                const config = THEME_CONFIG.categories[item.type] || THEME_CONFIG.categories.default;
+                const dataPayload = encodeURIComponent(JSON.stringify(item));
+                return `
+                    <button onclick="UI.showDetails('${dataPayload}')" 
+                            class="tag-button text-left p-6 rounded-full ${config.btn} flex flex-col justify-center shadow-sm">
+                        <span class="text-[10px] uppercase font-bold tracking-widest opacity-60 mb-1">${item.type}</span>
+                        <span class="font-medium text-lg truncate w-full">${item.name}</span>
+                    </button>
                 `;
-                container.appendChild(dateSection);
-            });
-        }
+            },
 
-        function showDetails(item) {
-            const modal = document.getElementById('detail-modal');
-            const header = document.getElementById('modal-header-bg');
-            
-            document.getElementById('modal-title').innerText = item.name;
-            document.getElementById('modal-date').innerText = item.date;
-            document.getElementById('modal-time').innerText = item.time || "15:00-18:00";
-            document.getElementById('modal-location').innerText = item.location;
-            document.getElementById('modal-capacity').innerText = item.capacity;
-            document.getElementById('modal-desc').innerText = item.desc;
-            document.getElementById('modal-fee').innerText = item.fee;
-            document.getElementById('modal-type-badge').innerText = item.type;
-            
-            header.className = `h-32 flex items-end px-6 pb-4 transition-colors duration-500 ${modalColors[item.type] || modalColors.default}`;
-            
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            modal.querySelector('.transform').classList.replace('scale-95', 'scale-100');
-            document.body.style.overflow = 'hidden';
-        }
+            showDetails(payload) {
+                const item = JSON.parse(decodeURIComponent(payload));
+                const config = THEME_CONFIG.categories[item.type] || THEME_CONFIG.categories.default;
+                
+                const set = (id, val) => document.getElementById(id).innerText = val;
+                set('modal-title', item.name);
+                set('modal-date', item.date);
+                set('modal-time', item.time || "15:00-18:00");
+                set('modal-location', item.location);
+                set('modal-capacity', item.capacity);
+                set('modal-desc', item.desc || "");
+                set('modal-fee', item.fee);
+                set('modal-type-tag', item.type);
 
-        function closeModal() {
-            const modal = document.getElementById('detail-modal');
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            modal.querySelector('.transform').classList.replace('scale-100', 'scale-95');
-            document.body.style.overflow = '';
-        }
+                const posterContainer = document.getElementById('modal-poster-container');
+                const posterImg = document.getElementById('modal-poster');
+                if (item.poster) {
+                    posterImg.src = item.poster;
+                    posterContainer.classList.remove('hidden');
+                } else {
+                    posterContainer.classList.add('hidden');
+                }
+                
+                document.getElementById('modal-side-accent').className = `hidden md:block col-span-1 ${config.accent}`;
+                
+                const modal = document.getElementById('detail-modal');
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                modal.querySelector('.transform').classList.replace('translate-y-8', 'translate-y-0');
+                document.body.style.overflow = 'hidden';
+            },
+
+            closeModal() {
+                const modal = document.getElementById('detail-modal');
+                modal.classList.add('opacity-0', 'pointer-events-none');
+                modal.querySelector('.transform').classList.replace('translate-y-0', 'translate-y-8');
+                document.body.style.overflow = '';
+            }
+        };
+
+        window.onload = async () => {
+            const data = await DataService.fetchCSV();
+            if (data) {
+                state.rawData = data;
+                UI.init();
+            }
+        };
     </script>
 </body>
 </html>
