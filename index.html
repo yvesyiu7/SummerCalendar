@@ -158,7 +158,7 @@
         const DataService = {
             async fetchCSV() {
                 try {
-                    const response = await fetch('Calendar.csv');
+                    const response = await fetch('https://cdn.jsdelivr.net/gh/yvesyiu7/SummerCalendar/Calendar.csv');
                     if (!response.ok) throw new Error('File not found');
                     const text = await response.text();
                     return this.parse(text);
@@ -273,7 +273,11 @@
                 const posterContainer = document.getElementById('modal-poster-container');
                 const posterImg = document.getElementById('modal-poster');
                 if (item.poster) {
-                    posterImg.src = item.poster;
+                    // 檢查如果路徑不是以 http 開頭，就自動加上 jsDelivr 前綴
+                    const baseUrl = "https://cdn.jsdelivr.net/gh/yvesyiu7/SummerCalendar/";
+                    const fullPosterUrl = item.poster.startsWith('http') ? item.poster : baseUrl + item.poster;
+                    
+                    posterImg.src = fullPosterUrl;
                     posterContainer.classList.remove('hidden');
                 } else {
                     posterContainer.classList.add('hidden');
